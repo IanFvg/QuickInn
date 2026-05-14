@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Buscar',
             content: `
                 <div class="search-box">
-                    <input type="text" id="search-input" placeholder="Dirección, ciudad o lugar..." class="panel-input">
+                    <input type="text" id="search-input" placeholder="Dirección, ciudad o lugar..." class="panel-input" autocomplete="off" spellcheck="false">
                     <div id="search-trigger" class="search-icon-trigger">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </div>
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             content: `
                 <div class="login-section">
                     <div class="login-form">
-                        <input type="text" id="login-name" placeholder="Nombre" class="panel-input login-input">
+                        <input type="text" id="login-name" placeholder="Nombre" class="panel-input login-input" autocomplete="off">
                         <input type="password" id="login-pass" placeholder="Contraseña" class="panel-input login-input">
                         <button class="panel-btn login-btn" id="login-submit">Ingresar</button>
                     </div>
@@ -78,8 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
             content: `
                 <div class="login-section">
                     <div class="login-form">
-                        <input type="text" id="reg-name" placeholder="Nombre" class="panel-input login-input">
-                        <input type="text" id="reg-email" placeholder="Correo" class="panel-input login-input">
+                        <input type="text" id="reg-name" placeholder="Nombre" class="panel-input login-input" autocomplete="off">
+                        <input type="text" id="reg-email" placeholder="Correo" class="panel-input login-input" autocomplete="off">
                         <input type="password" id="reg-pass" placeholder="Contraseña" class="panel-input login-input">
                         <input type="password" id="reg-pass-confirm" placeholder="Repetir Contraseña" class="panel-input login-input">
                         <p id="reg-error" class="error-text" style="display:none; color: #ff385c; font-size: 0.8rem; margin-top: -10px;"></p>
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="add-location-form">
                     <div class="form-group">
                         <label class="form-label">Nombre del local *</label>
-                        <input type="text" id="loc-name" placeholder="Nombre del hostal o local" class="panel-input">
+                        <input type="text" id="loc-name" placeholder="Nombre del hostal o local" class="panel-input" autocomplete="off">
                     </div>
                     
                     <div class="form-group">
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="form-group">
                         <label class="form-label">Ubicación exacta *</label>
                         <div class="search-box">
-                            <input type="text" id="loc-search" placeholder="Buscar dirección o marcar en el mapa" class="panel-input">
+                            <input type="text" id="loc-search" placeholder="Buscar dirección o marcar en el mapa" class="panel-input" autocomplete="off" spellcheck="false">
                             <div id="loc-search-trigger" class="search-icon-trigger">
                                 <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </div>
