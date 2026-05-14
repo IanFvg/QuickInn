@@ -1,3 +1,8 @@
+// Configuración de Supabase
+const SUPABASE_URL = "https://lndkhxkdjmkguorrslaj.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZGtoeGtkam1rZ3VvcnJzbGFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0ODg2MzIsImV4cCI6MjA5NDA2NDYzMn0.0TdlJOIh5Tk_IJ6QbchhKpC5Pi5iY1cOuXmb8g9p4OY";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 document.addEventListener('DOMContentLoaded', () => {
     // Variables globales
     let map;
