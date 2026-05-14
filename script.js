@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
             content: `
                 <div class="login-section">
                     <div class="login-form">
-                        <input type="text" id="login-email" placeholder="Correo" class="panel-input login-input">
+                        <input type="text" id="login-name" placeholder="Nombre" class="panel-input login-input">
                         <input type="password" id="login-pass" placeholder="Contraseña" class="panel-input login-input">
                         <button class="panel-btn login-btn" id="login-submit">Ingresar</button>
                     </div>
@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
             content: `
                 <div class="login-section">
                     <div class="login-form">
+                        <input type="text" id="reg-name" placeholder="Nombre" class="panel-input login-input">
                         <input type="text" id="reg-email" placeholder="Correo" class="panel-input login-input">
                         <input type="password" id="reg-pass" placeholder="Contraseña" class="panel-input login-input">
                         <input type="password" id="reg-pass-confirm" placeholder="Repetir Contraseña" class="panel-input login-input">
@@ -606,7 +607,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="validation-title">Ayuda a validar este lugar:</p>
                     <div class="validation-btns">
                         <button class="val-btn confirm-btn" id="vote-confirm">Confirmar (${loc.votesConfirm}/5)</button>
-                        <button class="val-btn false-btn" id="vote-false">Falso (${loc.votesFalse}/5)</button>
+                        <button class="val-btn false-btn" id="vote-false">Reportar inexistencia</button>
+                    </div>
+                    <div id="report-form-container" style="display: none; margin-top: 15px;">
+                        <textarea id="report-reason" placeholder="Describe por qué reportas este lugar..." class="panel-input panel-textarea" style="font-size: 0.85rem; height: 80px;"></textarea>
+                        <button class="panel-btn" id="submit-report-btn" style="margin-top: 10px; background: #ff385c;">Enviar solicitud de revisión</button>
                     </div>
                 ` : '<p class="validation-title" style="color: #27ae60;">Ubicación Validada por la Comunidad</p>'}
             </div>
@@ -619,11 +624,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (loc.status === 'pendiente') {
             document.getElementById('vote-confirm').onclick = () => handleVote(loc, 'confirm', marker);
-            document.getElementById('vote-false').onclick = () => handleVote(loc, 'false', marker);
+            
+            const voteFalseBtn = document.getElementById('vote-false');
+            const reportForm = document.getElementById('report-form-container');
+            const submitReportBtn = document.getElementById('submit-report-btn');
+
+            voteFalseBtn.onclick = () => {
+                reportForm.style.display = 'block';
+                voteFalseBtn.style.display = 'none';
+            };
+
+            submitReportBtn.onclick = () => {
+                const reason = document.getElementById('report-reason').value.trim();
+                if (!reason) {
+                    alert('Por favor, escribe el motivo de tu reporte.');
+                    return;
+                }
+                handleVote(loc, 'false', marker, reason);
+            };
         }
     }
 
-    function handleVote(loc, type, marker) {
+    function handleVote(loc, type, marker, reason = '') {
         // Simulación de usuario (en el futuro vendrá de Supabase)
         if (type === 'confirm') {
             loc.votesConfirm++;
@@ -633,13 +655,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             loc.votesFalse++;
+            // Guardar el reporte en el objeto (simulación)
+            if (!loc.reports) loc.reports = [];
+            loc.reports.push({
+                user: currentUser ? currentUser.name : 'Anónimo',
+                reason: reason,
+                date: new Date().toLocaleString()
+            });
+
             if (loc.votesFalse >= 5) {
                 map.removeLayer(marker);
                 locations = locations.filter(l => l.id !== loc.id);
                 sidePanel.classList.remove('open');
-                alert('La ubicación ha sido eliminada por reportes de falsedad.');
+                alert('La ubicación ha sido eliminada por reportes de inexistencia.');
                 return;
             }
+            alert('Reporte enviado correctamente. El administrador revisará su solicitud.');
         }
         showLocationDetails(loc, marker); // Refrescar vista
     }
@@ -678,7 +709,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         } else {
             profileView.innerHTML = `
-                <h3 class="profile-welcome">Hola, ${currentUser.email.split('@')[0]}</h3>
+                <h3 class="profile-welcome">Hola, ${currentUser.name || currentUser.email.split('@')[0]}</h3>
                 <p class="panel-hint">${currentUser.role === 'admin' ? 'Modo Administrador' : 'Usuario Registrado'}</p>
                 <div class="profile-actions" style="margin-top: 30px;">
                     <button class="panel-btn profile-btn-outline" id="logout-btn">Cerrar Sesión</button>
@@ -705,11 +736,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (loginSubmit) {
             loginSubmit.onclick = () => {
-                const email = document.getElementById('login-email').value;
-                // Simulación de login: si el correo contiene "admin" es administrador
+                const name = document.getElementById('login-name').value;
+                // Simulación de login: si el nombre contiene "admin" es administrador
                 currentUser = {
-                    email: email || 'usuario@ejemplo.com',
-                    role: email.includes('admin') ? 'admin' : 'user'
+                    name: name || 'Usuario',
+                    email: 'usuario@ejemplo.com',
+                    role: name.toLowerCase().includes('admin') ? 'admin' : 'user'
                 };
                 showPanelView('profile');
                 initProfileEvents();
@@ -734,10 +766,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (registerBtn) {
             registerBtn.addEventListener('click', () => {
+                const name = document.getElementById('reg-name').value;
+                const email = document.getElementById('reg-email').value;
                 const pass = passInput.value;
                 const confirmPass = confirmPassInput.value;
 
-                if (pass === '' || confirmPass === '') {
+                if (name === '' || email === '' || pass === '' || confirmPass === '') {
                     errorMsg.textContent = 'Por favor, completa todos los campos.';
                     errorMsg.style.display = 'block';
                 } else if (pass !== confirmPass) {
