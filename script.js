@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             content: `
                 <div class="search-box">
                     <input type="text" id="search-input" placeholder="Dirección, ciudad o lugar..." class="panel-input" autocomplete="off" spellcheck="false">
+                    <div id="search-clear" class="search-clear-btn" style="display: none;">×</div>
                     <div id="search-trigger" class="search-icon-trigger">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </div>
@@ -129,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label class="form-label">Ubicación exacta *</label>
                         <div class="search-box">
                             <input type="text" id="loc-search" placeholder="Buscar dirección o marcar en el mapa" class="panel-input" autocomplete="off" spellcheck="false">
+                            <div id="loc-search-clear" class="search-clear-btn" style="display: none;">×</div>
                             <div id="loc-search-trigger" class="search-icon-trigger">
                                 <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </div>
@@ -366,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const saveBtn = document.getElementById('save-location-btn');
         const locSearchInput = document.getElementById('loc-search');
         const locSearchResults = document.getElementById('loc-search-results');
+        const locSearchClear = document.getElementById('loc-search-clear');
         const starRating = document.getElementById('loc-rating');
         const priceBtns = document.querySelectorAll('.price-btn');
         
@@ -374,6 +377,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedCoords = null;
         let photoData = null;
         let stream = null;
+
+        // --- Manejo de la 'X' para limpiar buscador de ubicación ---
+        if (locSearchInput && locSearchClear) {
+            locSearchInput.addEventListener('input', () => {
+                locSearchClear.style.display = locSearchInput.value.length > 0 ? 'flex' : 'none';
+            });
+
+            locSearchClear.addEventListener('click', (e) => {
+                e.stopPropagation();
+                locSearchInput.value = '';
+                locSearchClear.style.display = 'none';
+                locSearchResults.innerHTML = '';
+                locSearchInput.focus();
+            });
+        }
 
         // --- Manejo de Fotos ---
 
@@ -845,12 +863,30 @@ document.addEventListener('DOMContentLoaded', () => {
     function initSearchEvents() {
         const searchInput = document.getElementById('search-input');
         const searchTrigger = document.getElementById('search-trigger');
+        const searchClear = document.getElementById('search-clear');
         const resultsContainer = document.getElementById('search-results');
         const historyContainer = document.getElementById('search-history');
         let debounceTimer;
 
         // Mostrar historial al cargar el panel
         renderHistory();
+
+        // --- Manejo de la 'X' para limpiar buscador principal ---
+        if (searchInput && searchClear) {
+            // Mostrar/Ocultar al escribir
+            searchInput.addEventListener('input', () => {
+                searchClear.style.display = searchInput.value.length > 0 ? 'flex' : 'none';
+            });
+
+            // Acción de limpiar
+            searchClear.addEventListener('click', (e) => {
+                e.stopPropagation();
+                searchInput.value = '';
+                searchClear.style.display = 'none';
+                resultsContainer.innerHTML = '';
+                searchInput.focus();
+            });
+        }
 
         function renderHistory() {
             if (!historyContainer) return;
