@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        showStatus('Solicitando permiso de ubicación...', 5000);
+        // showStatus('Solicitando permiso de ubicación...', 5000); // Comentado para que no aparezca al inicio
 
         const options = {
             enableHighAccuracy: true,
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     duration: 2
                 });
                 isFirstLocation = false;
-                showStatus('¡Ubicación encontrada!');
+                // showStatus('¡Ubicación encontrada!'); // Eliminado para que no aparezca el texto
             }
         };
 
