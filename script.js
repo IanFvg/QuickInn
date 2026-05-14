@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let searchHistory = []; // Almacenar historial en memoria
     let locations = []; // Almacenar ubicaciones agregadas
     let tempMarker; // Marcador temporal para agregar ubicación
+    let searchPulseMarker; // Marcador de pulso para búsquedas
     let currentUser = null; // Simulación de usuario (null = no autenticado)
 
     let currentPanelKey = '';
@@ -458,16 +459,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Búsqueda de dirección en el formulario
         let locDebounce;
-        locSearchInput.oninput = () => {
-            clearTimeout(locDebounce);
-            locDebounce = setTimeout(async () => {
-                const query = locSearchInput.value.trim();
-                if (query.length < 3) return;
+        const performLocSearch = async () => {
+            const query = locSearchInput.value.trim();
+            if (query.length < 3) return;
+            
+            try {
+                locSearchResults.innerHTML = '<p class="panel-hint" style="padding: 10px;">Buscando...</p>';
+                const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+                const data = await resp.json();
+                locSearchResults.innerHTML = '';
                 
-                try {
-                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
-                    const data = await resp.json();
-                    locSearchResults.innerHTML = '';
+                if (data.length > 0) {
                     data.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'result-item';
@@ -483,8 +485,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         };
                         locSearchResults.appendChild(div);
                     });
-                } catch (e) { console.error(e); }
-            }, 500);
+                } else {
+                    locSearchResults.innerHTML = '<p class="panel-hint" style="padding: 10px;">No se encontraron resultados.</p>';
+                }
+            } catch (e) { 
+                console.error(e);
+                locSearchResults.innerHTML = '<p class="panel-hint" style="padding: 10px;">Error al buscar.</p>';
+            }
+        };
+
+        locSearchInput.oninput = () => {
+            clearTimeout(locDebounce);
+            locDebounce = setTimeout(performLocSearch, 800);
+        };
+
+        const locSearchTrigger = document.getElementById('loc-search-trigger');
+        if (locSearchTrigger) {
+            locSearchTrigger.onclick = (e) => {
+                e.stopPropagation();
+                clearTimeout(locDebounce);
+                performLocSearch();
+            };
+        }
+
+        locSearchInput.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(locDebounce);
+                performLocSearch();
+            }
         };
 
         // Marcado manual en el mapa
@@ -874,20 +903,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!isAuto) resultsContainer.innerHTML = '<p class="panel-empty">No se encontraron resultados.</p>';
                 } else {
                     resultsContainer.innerHTML = ''; // Limpiar antes de mostrar nuevos
+                    
+                    // Si el usuario presionó Enter o Lupa (no es auto), ir al primer resultado
+                    if (!isAuto && data.length > 0) {
+                        const first = data[0];
+                        goToSearchResult(first.display_name, parseFloat(first.lat), parseFloat(first.lon));
+                        return;
+                    }
+
                     data.forEach(result => {
                         const div = document.createElement('div');
                         div.className = 'result-item';
                         div.textContent = result.display_name;
                         div.onclick = () => {
-                            const lat = parseFloat(result.lat);
-                            const lon = parseFloat(result.lon);
-                            
-                            // Añadir al historial
-                            addToHistory(result.display_name, lat, lon);
-                            
-                            map.flyTo([lat, lon], 16);
-                            sidePanel.classList.remove('open');
-                            sidebarItems.forEach(i => i.classList.remove('active'));
+                            goToSearchResult(result.display_name, parseFloat(result.lat), parseFloat(result.lon));
                         };
                         resultsContainer.appendChild(div);
                     });
@@ -898,15 +927,62 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        const goToSearchResult = (name, lat, lon) => {
+            // Añadir al historial
+            addToHistory(name, lat, lon);
+            
+            // Efecto de pulso
+            showSearchPulse(lat, lon);
+            
+            map.flyTo([lat, lon], 16, {
+                duration: 2
+            });
+            
+            // Cerrar panel en móviles si es necesario, o solo limpiar clases
+            if (window.innerWidth <= 768) {
+                sidePanel.classList.remove('open');
+                sidebarItems.forEach(i => i.classList.remove('active'));
+            }
+        };
+
+        const showSearchPulse = (lat, lon) => {
+            if (searchPulseMarker) {
+                map.removeLayer(searchPulseMarker);
+            }
+
+            const pulseIcon = L.divIcon({
+                className: 'search-pulse-marker',
+                html: '<div class="pulse-ring"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            searchPulseMarker = L.marker([lat, lon], { icon: pulseIcon }).addTo(map);
+
+            // Quitar el pulso después de un tiempo para que no sea infinito/invasivo
+            setTimeout(() => {
+                if (searchPulseMarker) {
+                    map.removeLayer(searchPulseMarker);
+                    searchPulseMarker = null;
+                }
+            }, 10000); // 10 segundos de pulso
+        };
+
         // Evento input para búsqueda en tiempo real con debounce
         searchInput.addEventListener('input', () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => performSearch(true), 500);
         });
 
-        searchTrigger.addEventListener('click', () => performSearch(false));
+        searchTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearTimeout(debounceTimer);
+            performSearch(false);
+        });
+
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 clearTimeout(debounceTimer);
                 performSearch(false);
             }

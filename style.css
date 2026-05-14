@@ -919,6 +919,43 @@ body, html {
     100% { transform: scale(1); opacity: 1; }
 }
 
+/* Efecto de Pulso para Búsqueda */
+.search-pulse-marker {
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pulse-ring {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--primary-color);
+    border-radius: 50%;
+    background: rgba(255, 56, 92, 0.2);
+    position: relative;
+}
+
+.pulse-ring::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: search-pulse-animation 3s ease-out infinite;
+    opacity: 0;
+}
+
+@keyframes search-pulse-animation {
+    0% { transform: scale(0.5); opacity: 0; }
+    30% { opacity: 0.6; }
+    100% { transform: scale(3); opacity: 0; }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     #app {
