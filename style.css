@@ -858,26 +858,27 @@ body, html {
 
 .status-bar {
     position: absolute;
-    top: 90px;
-    left: 24px;
+    top: 70px; /* Justo debajo del contenedor del logo */
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
     z-index: 999;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     color: var(--text-color);
-    padding: 6px 14px;
+    padding: 8px 18px;
     border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    backdrop-filter: blur(8px);
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
     pointer-events: none;
     opacity: 0;
-    transform: translateY(-10px);
-    transition: all 0.4s ease;
+    transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+    white-space: nowrap;
 }
 
 .status-bar.visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
 }
 
 /* User Marker */
