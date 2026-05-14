@@ -948,7 +948,7 @@ body, html {
     /* Iniciamos con un tamaño grande para evitar pixelado al escalar */
     width: 200px;
     height: 200px;
-    border: 1.5px solid var(--primary-color);
+    border: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: search-pulse-animation 5s cubic-bezier(0.165, 0.84, 0.44, 1) infinite;
     opacity: 0;
@@ -961,6 +961,7 @@ body, html {
     0% { 
         transform: translate(-50%, -50%) scale(0.05); 
         opacity: 0;
+        border-width: 6px;
     }
     10% {
         opacity: 0.4;
@@ -968,7 +969,7 @@ body, html {
     100% { 
         transform: translate(-50%, -50%) scale(1.2); 
         opacity: 0;
-        border-width: 0.5px;
+        border-width: 1.5px;
     }
 }
 
