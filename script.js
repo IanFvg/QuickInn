@@ -959,13 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             searchPulseMarker = L.marker([lat, lon], { icon: pulseIcon }).addTo(map);
 
-            // Quitar el pulso después de un tiempo para que no sea infinito/invasivo
-            setTimeout(() => {
-                if (searchPulseMarker) {
-                    map.removeLayer(searchPulseMarker);
-                    searchPulseMarker = null;
-                }
-            }, 10000); // 10 segundos de pulso
+            // El marcador ya no se elimina automáticamente para que el lugar quede marcado
         };
 
         // Evento input para búsqueda en tiempo real con debounce
