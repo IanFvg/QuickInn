@@ -919,7 +919,7 @@ body, html {
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* Efecto de Pulso para Búsqueda */
+/* Efecto de Pulso para Búsqueda - Versión Suave y Grande */
 .search-pulse-marker {
     background: transparent;
     border: none;
@@ -929,31 +929,42 @@ body, html {
 }
 
 .pulse-ring {
-    width: 20px;
-    height: 20px;
-    border: 3px solid var(--primary-color);
+    width: 10px;
+    height: 10px;
+    background: var(--primary-color);
     border-radius: 50%;
-    background: rgba(255, 56, 92, 0.2);
     position: relative;
 }
 
 .pulse-ring::after {
     content: '';
     position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    border: 3px solid var(--primary-color);
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin-left: -10px;
+    margin-top: -10px;
+    border: 2px solid var(--primary-color);
     border-radius: 50%;
-    animation: search-pulse-animation 3s ease-out infinite;
+    animation: search-pulse-animation 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
     opacity: 0;
 }
 
 @keyframes search-pulse-animation {
-    0% { transform: scale(0.5); opacity: 0; }
-    30% { opacity: 0.6; }
-    100% { transform: scale(3); opacity: 0; }
+    0% { 
+        transform: scale(0.5); 
+        opacity: 0; 
+        border-width: 3px;
+    }
+    20% { 
+        opacity: 0.4; 
+    }
+    100% { 
+        transform: scale(8); 
+        opacity: 0; 
+        border-width: 1px;
+    }
 }
 
 /* Responsive */
