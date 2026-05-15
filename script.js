@@ -3,6 +3,115 @@ const SUPABASE_URL = "https://lndkhxkdjmkguorrslaj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZGtoeGtkam1rZ3VvcnJzbGFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0ODg2MzIsImV4cCI6MjA5NDA2NDYzMn0.0TdlJOIh5Tk_IJ6QbchhKpC5Pi5iY1cOuXmb8g9p4OY";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// --- UTILIDADES DE SUPABASE ---
+
+// Registrar usuario
+async function signUp(email, password, nombre) {
+    try {
+        const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+            email,
+            password,
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+            const { error: dbError } = await supabaseClient
+                .from('usuario')
+                .insert([
+                    { 
+                        id: authData.user.id, 
+                        auth_id: authData.user.id,
+                        email: email, 
+                        nombre_usuario: nombre, 
+                        rol: 'usuario' 
+                    }
+                ]);
+
+            if (dbError) throw dbError;
+            return { data: authData, error: null };
+        }
+    } catch (error) {
+        console.error('Error en registro:', error);
+        return { data: null, error };
+    }
+}
+
+// Iniciar sesión
+async function signIn(nombre, password) {
+    try {
+        // Primero buscamos el email asociado al nombre_usuario
+        const { data: userData, error: userError } = await supabaseClient
+            .from('usuario')
+                .select('email')
+                .eq('nombre_usuario', nombre)
+                .single();
+
+        if (userError || !userData) throw new Error('Usuario no encontrado');
+
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+            email: userData.email,
+            password,
+        });
+
+        if (authError) throw authError;
+
+        // Obtener datos completos del usuario
+        const { data: fullUserData, error: fullUserError } = await supabaseClient
+            .from('usuario')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (fullUserError) throw fullUserError;
+
+        return { data: fullUserData, error: null };
+    } catch (error) {
+        console.error('Error en login:', error);
+        return { data: null, error };
+    }
+}
+
+// Cerrar sesión
+async function signOut() {
+    const { error } = await supabaseClient.auth.signOut();
+    return { error };
+}
+
+// Obtener locales
+async function fetchLocales() {
+    const { data, error } = await supabaseClient
+        .from('locales')
+        .select('*, reseñas(*)')
+        .neq('estado', 'eliminado');
+    return { data, error };
+}
+
+// Guardar local
+async function insertLocal(localData) {
+    const { data, error } = await supabaseClient
+        .from('locales')
+        .insert([localData])
+        .select();
+    return { data, error };
+}
+
+// Guardar favorito
+async function toggleFavorito(userId, localId, isFav) {
+    if (isFav) {
+        const { error } = await supabaseClient
+            .from('favoritos')
+            .insert([{ usuario_id: userId, local_id: localId }]);
+        return { error };
+    } else {
+        const { error } = await supabaseClient
+            .from('favoritos')
+            .delete()
+            .match({ usuario_id: userId, local_id: localId });
+        return { error };
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Variables globales
     let map;
@@ -563,49 +672,70 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Guardar Ubicación
-        saveBtn.onclick = () => {
-            const name = document.getElementById('loc-name').value.trim();
-            const comment = document.getElementById('loc-comment').value.trim();
+    // Guardar Ubicación
+    saveBtn.onclick = async () => {
+        const name = document.getElementById('loc-name').value.trim();
+        const comment = document.getElementById('loc-comment').value.trim();
 
-            if (!name || !photoData || !selectedCoords) {
-                alert('Por favor, completa todos los campos obligatorios (*).');
-                return;
-            }
+        if (!name || !photoData || !selectedCoords) {
+            alert('Por favor, completa todos los campos obligatorios (*).');
+            return;
+        }
 
-            const newLoc = {
-                id: Date.now(),
-                name,
-                photo: photoData,
-                coords: selectedCoords,
-                rating: selectedRating,
-                price: selectedPrice,
-                comment,
-                status: 'pendiente',
-                votesConfirm: 0,
-                votesFalse: 0,
-                votedUsers: [],
-                createdBy: currentUser ? currentUser.email : 'Anónimo',
-                createdAt: new Date().toLocaleDateString()
-            };
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Guardando...';
 
-            locations.push(newLoc);
-            addLocationToMap(newLoc);
-            
-            // Limpiar y cerrar
-            if (tempMarker) {
-                map.removeLayer(tempMarker);
-                tempMarker = null;
-            }
-            map.off('click', onMapClick);
-            sidePanel.classList.remove('open');
-            sidebarItems.forEach(i => i.classList.remove('active'));
-            alert('¡Ubicación agregada con éxito! Está pendiente de validación.');
+        const localData = {
+            nombre: name,
+            direccion: selectedCoords.address,
+            latitud: selectedCoords.lat,
+            longitud: selectedCoords.lon,
+            foto_url: photoData, // Aquí idealmente subirías a Storage, pero por ahora guardamos base64
+            rango_precio: selectedPrice,
+            estado: 'pendiente',
+            confirmaciones: 0,
+            usuario_id: currentUser ? currentUser.id : null
         };
+
+        const { data, error } = await insertLocal(localData);
+
+        if (error) {
+            alert('Error al guardar: ' + error.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Agregar ubicación';
+            return;
+        }
+
+        const savedLoc = data[0];
+
+        // Guardar reseña inicial si hay comentario o rating
+        if (comment || selectedRating > 0) {
+            await supabaseClient.from('reseñas').insert([{
+                local_id: savedLoc.id,
+                usuario_id: currentUser.id,
+                calificacion: selectedRating,
+                comentario: comment
+            }]);
+        }
+
+        addLocationToMap(savedLoc);
+        
+        // Limpiar y cerrar
+        if (tempMarker) {
+            map.removeLayer(tempMarker);
+            tempMarker = null;
+        }
+        map.off('click', onMapClick);
+        sidePanel.classList.remove('open');
+        sidebarItems.forEach(i => i.classList.remove('active'));
+        alert('¡Ubicación agregada con éxito! Está pendiente de validación.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Agregar ubicación';
+    };
     }
 
     function addLocationToMap(loc) {
-        const iconClass = loc.status === 'pendiente' ? 'marker-pin marker-pending' : 'marker-pin';
+        const iconClass = loc.estado === 'pendiente' ? 'marker-pin marker-pending' : 'marker-pin';
         const icon = L.divIcon({
             className: 'custom-div-icon',
             html: `<div class="${iconClass}"></div>`,
@@ -613,68 +743,78 @@ document.addEventListener('DOMContentLoaded', () => {
             iconAnchor: [15, 42]
         });
 
-        const marker = L.marker([loc.coords.lat, loc.coords.lon], { icon }).addTo(map);
+        const marker = L.marker([loc.latitud, loc.longitud], { icon }).addTo(map);
         marker.on('click', () => {
             showLocationDetails(loc, marker);
         });
     }
 
-    function showLocationDetails(loc, marker) {
+    async function showLocationDetails(loc, marker) {
         showPanelView('details');
         const container = document.getElementById('location-details');
         
-        const stars = '★'.repeat(loc.rating) + '☆'.repeat(5 - loc.rating);
-        const prices = '$'.repeat(loc.price);
+        // Obtener calificación promedio (si no viene ya en el objeto)
+        let rating = 0;
+        if (loc.reseñas && loc.reseñas.length > 0) {
+            rating = Math.round(loc.reseñas.reduce((acc, r) => acc + r.calificacion, 0) / loc.reseñas.length);
+        }
+
+        const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        const prices = '$'.repeat(loc.rango_precio);
         
         // Información de Administrador
         let adminInfo = '';
-        if (currentUser && currentUser.role === 'admin') {
+        if (currentUser && currentUser.rol === 'admin') {
             adminInfo = `
                 <div class="admin-info-badge">
                     <p><strong>Admin Panel</strong></p>
-                    <p>Creado por: ${loc.createdBy}</p>
-                    <p>Fecha: ${loc.createdAt}</p>
-                    <p>Votos (+): ${loc.votesConfirm} | Votos (-): ${loc.votesFalse}</p>
+                    <p>ID: ${loc.id}</p>
+                    <p>Estado: ${loc.estado}</p>
+                    <p>Votos: ${loc.confirmaciones}</p>
                 </div>
             `;
         }
 
         container.innerHTML = `
             ${adminInfo}
-            <img src="${loc.photo}" class="detail-img" alt="${loc.name}">
-            <h3 class="detail-title">${loc.name}</h3>
+            <img src="${loc.foto_url}" class="detail-img" alt="${loc.nombre}">
+            <h3 class="detail-title">${loc.nombre}</h3>
             <div class="detail-info-row">
                 <span class="detail-rating">${stars}</span>
                 <span class="detail-price">${prices}</span>
             </div>
-            <p class="detail-address">${loc.coords.address}</p>
+            <p class="detail-address">${loc.direccion}</p>
             <button class="copy-btn" id="copy-address">Copiar dirección</button>
             
             <div class="form-divider"><span>Comentarios</span></div>
-            <p class="detail-address">${loc.comment || 'Sin comentarios.'}</p>
+            <div id="reviews-container" class="reviews-list">
+                ${loc.reseñas && loc.reseñas.length > 0 ? 
+                    loc.reseñas.map(r => `<p class="detail-address"><strong>${r.calificacion}★</strong>: ${r.comentario}</p>`).join('') : 
+                    '<p class="detail-address">Sin comentarios.</p>'}
+            </div>
 
             <div class="validation-section">
-                <p class="validation-title">Estado: <strong>${loc.status.toUpperCase()}</strong></p>
-                ${loc.status === 'pendiente' ? `
+                <p class="validation-title">Estado: <strong>${(loc.estado || 'pendiente').toUpperCase()}</strong></p>
+                ${loc.estado === 'pendiente' ? `
                     <p class="validation-title">Ayuda a validar este lugar:</p>
                     <div class="validation-btns">
-                        <button class="val-btn confirm-btn" id="vote-confirm">Confirmar (${loc.votesConfirm}/5)</button>
+                        <button class="val-btn confirm-btn" id="vote-confirm">Confirmar (${loc.confirmaciones || 0}/5)</button>
                         <button class="val-btn false-btn" id="vote-false">Reportar inexistencia</button>
                     </div>
-                    <div id="report-form-container" style="display: none; margin-top: 15px;">
-                        <textarea id="report-reason" placeholder="Describe por qué reportas este lugar..." class="panel-input panel-textarea" style="font-size: 0.85rem; height: 80px;"></textarea>
-                        <button class="panel-btn" id="submit-report-btn" style="margin-top: 10px; background: #ff385c;">Enviar solicitud de revisión</button>
-                    </div>
                 ` : '<p class="validation-title" style="color: #27ae60;">Ubicación Validada por la Comunidad</p>'}
+            </div>
+            <div id="report-form-container" style="display: none; margin-top: 15px;">
+                <textarea id="report-reason" placeholder="Describe por qué reportas este lugar..." class="panel-input panel-textarea" style="font-size: 0.85rem; height: 80px;"></textarea>
+                <button class="panel-btn" id="submit-report-btn" style="margin-top: 10px; background: #ff385c;">Enviar solicitud de revisión</button>
             </div>
         `;
 
         document.getElementById('copy-address').onclick = () => {
-            navigator.clipboard.writeText(loc.coords.address);
+            navigator.clipboard.writeText(loc.direccion);
             alert('Dirección copiada al portapapeles');
         };
 
-        if (loc.status === 'pendiente') {
+        if (loc.estado === 'pendiente') {
             document.getElementById('vote-confirm').onclick = () => handleVote(loc, 'confirm', marker);
             
             const voteFalseBtn = document.getElementById('vote-false');
@@ -683,7 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             voteFalseBtn.onclick = () => {
                 reportForm.style.display = 'block';
-                voteFalseBtn.style.display = 'none';
+                voteFalseBtn.parentElement.style.display = 'none';
             };
 
             submitReportBtn.onclick = () => {
@@ -697,32 +837,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function handleVote(loc, type, marker, reason = '') {
-        // Simulación de usuario (en el futuro vendrá de Supabase)
-        if (type === 'confirm') {
-            loc.votesConfirm++;
-            if (loc.votesConfirm >= 5) {
-                loc.status = 'confirmada';
-                updateMarkerIcon(loc, marker);
-            }
-        } else {
-            loc.votesFalse++;
-            // Guardar el reporte en el objeto (simulación)
-            if (!loc.reports) loc.reports = [];
-            loc.reports.push({
-                user: currentUser ? currentUser.name : 'Anónimo',
-                reason: reason,
-                date: new Date().toLocaleString()
-            });
+    async function handleVote(loc, type, marker, reason = '') {
+        if (!currentUser) {
+            alert('Inicia sesión para votar.');
+            return;
+        }
 
-            if (loc.votesFalse >= 5) {
-                map.removeLayer(marker);
-                locations = locations.filter(l => l.id !== loc.id);
-                sidePanel.classList.remove('open');
-                alert('La ubicación ha sido eliminada por reportes de inexistencia.');
+        if (type === 'confirm') {
+            // Verificar si ya votó
+            const { data: existing } = await supabaseClient
+                .from('confirmaciones')
+                .select('*')
+                .match({ usuario_id: currentUser.id, local_id: loc.id });
+
+            if (existing && existing.length > 0) {
+                alert('Ya has confirmado este lugar.');
                 return;
             }
-            alert('Reporte enviado correctamente. El administrador revisará su solicitud.');
+
+            const { error } = await supabaseClient
+                .from('confirmaciones')
+                .insert([{ usuario_id: currentUser.id, local_id: loc.id }]);
+
+            if (!error) {
+                const newCount = (loc.confirmaciones || 0) + 1;
+                const updates = { confirmaciones: newCount };
+                if (newCount >= 5) updates.estado = 'verificado';
+
+                await supabaseClient.from('locales').update(updates).eq('id', loc.id);
+                loc.confirmaciones = newCount;
+                if (newCount >= 5) loc.estado = 'verificado';
+                alert('¡Gracias por confirmar!');
+            }
+        } else {
+            // Reporte
+            const { error } = await supabaseClient
+                .from('reportes')
+                .insert([{ usuario_id: currentUser.id, local_id: loc.id, motivo: reason }]);
+
+            if (!error) {
+                alert('Reporte enviado correctamente.');
+            }
         }
         showLocationDetails(loc, marker); // Refrescar vista
     }
@@ -761,14 +916,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         } else {
             profileView.innerHTML = `
-                <h3 class="profile-welcome">Hola, ${currentUser.name || currentUser.email.split('@')[0]}</h3>
-                <p class="panel-hint">${currentUser.role === 'admin' ? 'Modo Administrador' : 'Usuario Registrado'}</p>
+                <h3 class="profile-welcome">Hola, ${currentUser.nombre_usuario}</h3>
+                <p class="panel-hint">${currentUser.rol === 'admin' ? 'Modo Administrador' : 'Usuario Registrado'}</p>
                 <div class="profile-actions" style="margin-top: 30px;">
                     <button class="panel-btn profile-btn-outline" id="logout-btn">Cerrar Sesión</button>
                 </div>
             `;
             
-            document.getElementById('logout-btn').onclick = () => {
+            document.getElementById('logout-btn').onclick = async () => {
+                await signOut();
                 currentUser = null;
                 initProfileEvents();
             };
@@ -787,17 +943,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (loginSubmit) {
-            loginSubmit.onclick = () => {
-                const name = document.getElementById('login-name').value;
-                // Simulación de login: si el nombre contiene "admin" es administrador
-                currentUser = {
-                    name: name || 'Usuario',
-                    email: 'usuario@ejemplo.com',
-                    role: name.toLowerCase().includes('admin') ? 'admin' : 'user'
-                };
+            loginSubmit.onclick = async () => {
+                const name = document.getElementById('login-name').value.trim();
+                const pass = document.getElementById('login-pass').value;
+
+                if (!name || !pass) {
+                    alert('Por favor, completa todos los campos.');
+                    return;
+                }
+
+                loginSubmit.disabled = true;
+                loginSubmit.textContent = 'Ingresando...';
+
+                const { data, error } = await signIn(name, pass);
+
+                if (error) {
+                    alert('Error: ' + error.message);
+                    loginSubmit.disabled = false;
+                    loginSubmit.textContent = 'Ingresar';
+                    return;
+                }
+
+                currentUser = data;
                 showPanelView('profile');
                 initProfileEvents();
-                alert(`Sesión iniciada como ${currentUser.role}`);
+                alert(`Bienvenido, ${currentUser.nombre_usuario}`);
             };
         }
     }
@@ -817,9 +987,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (registerBtn) {
-            registerBtn.addEventListener('click', () => {
-                const name = document.getElementById('reg-name').value;
-                const email = document.getElementById('reg-email').value;
+            registerBtn.addEventListener('click', async () => {
+                const name = document.getElementById('reg-name').value.trim();
+                const email = document.getElementById('reg-email').value.trim();
                 const pass = passInput.value;
                 const confirmPass = confirmPassInput.value;
 
@@ -831,9 +1001,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     errorMsg.style.display = 'block';
                     confirmPassInput.style.borderColor = '#ff385c';
                 } else {
-                    errorMsg.style.display = 'none';
-                    confirmPassInput.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                    alert('¡Registro exitoso!'); // Simulación
+                    registerBtn.disabled = true;
+                    registerBtn.textContent = 'Registrando...';
+
+                    const { error } = await signUp(email, pass, name);
+
+                    if (error) {
+                        alert('Error en registro: ' + error.message);
+                        registerBtn.disabled = false;
+                        registerBtn.textContent = 'Registrarse';
+                    } else {
+                        alert('¡Registro exitoso! Por favor, inicia sesión.');
+                        showPanelView('login');
+                        initLoginEvents();
+                    }
                 }
             });
 
@@ -968,9 +1149,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const goToSearchResult = (name, lat, lon) => {
+        const goToSearchResult = async (name, lat, lon) => {
             // Añadir al historial
             addToHistory(name, lat, lon);
+
+            // Guardar en Supabase si hay usuario
+            if (currentUser) {
+                await supabaseClient.from('historial_busqueda').insert([{
+                    usuario_id: currentUser.id,
+                    termino: name,
+                    latitud_buscada: lat,
+                    longitud_buscada: lon
+                }]);
+            }
             
             // Efecto de pulso
             showSearchPulse(lat, lon);
@@ -1038,4 +1229,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Iniciar aplicación
     initMap();
+    loadInitialData();
+
+    async function loadInitialData() {
+        const { data, error } = await fetchLocales();
+        if (!error && data) {
+            data.forEach(loc => addLocationToMap(loc));
+        }
+
+        // Verificar sesión activa
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            const { data: userData } = await supabaseClient
+                .from('usuario')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+            if (userData) currentUser = userData;
+        }
+    }
 });
