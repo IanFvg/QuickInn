@@ -170,9 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
         saved: {
             title: 'Guardados',
             content: `
-                <div class="saved-list">
-                    <p class="panel-empty" id="saved-status-text">Inicia sesión para ver tus lugares guardados.</p>
-                    <div id="favorites-container"></div>
+                <div class="saved-list" id="saved-panel-container">
+                    <!-- El contenido se generará 100% dinámico según el usuario -->
                 </div>
             `
         },
@@ -1267,24 +1266,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function updateSavedPanel() {
-        const statusText = document.getElementById('saved-status-text');
-        const container = document.getElementById('favorites-container');
-        if (!statusText || !container) return;
+        const container = document.getElementById('saved-panel-container');
+        if (!container) return;
 
-        // Limpiar contenedor para evitar duplicados
-        container.innerHTML = '';
-
+        // 1. Si no hay usuario, mostrar mensaje de invitación al login
         if (!currentUser) {
-            statusText.style.display = 'block';
-            statusText.textContent = 'Inicia sesión para ver tus lugares guardados.';
+            container.innerHTML = `<p class="panel-empty">Inicia sesión para ver tus lugares guardados.</p>`;
             return;
         }
 
-        // SI HAY USUARIO, CAMBIAMOS EL TEXTO INMEDIATAMENTE
-        statusText.style.display = 'block';
-        statusText.textContent = 'Aún no tienes lugares guardados.';
+        // 2. Si hay usuario, mostrar estado de carga
+        container.innerHTML = `<p class="panel-empty">Cargando tus favoritos...</p>`;
 
         try {
+            // 3. Consultar la base de datos de Supabase para este usuario específico
             const { data: favs, error } = await supabaseClient
                 .from('favoritos')
                 .select('*, locales(*)')
@@ -1292,25 +1287,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (error) throw error;
 
+            // 4. Si tiene favoritos, renderizar la lista
             if (favs && favs.length > 0) {
-                // Si hay datos, el texto de estado desaparece
-                statusText.style.display = 'none';
                 container.innerHTML = favs.map(f => `
                     <div class="result-item" onclick="map.flyTo([${f.locales.latitud}, ${f.locales.longitud}], 16)">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <img src="${f.locales.foto_url}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
-                            <div>
-                                <p style="font-weight: 600; margin: 0;">${f.locales.nombre}</p>
-                                <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 0;">${f.locales.direccion}</p>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <img src="${f.locales.foto_url}" style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="flex: 1;">
+                                <p style="font-weight: 600; margin: 0; color: white; font-size: 0.95rem;">${f.locales.nombre}</p>
+                                <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 2px 0 0 0; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${f.locales.direccion}</p>
                             </div>
                         </div>
                     </div>
                 `).join('');
+            } 
+            // 5. Si está logueado pero no tiene nada guardado, mostrar el texto específico solicitado
+            else {
+                container.innerHTML = `<p class="panel-empty">Aún no tienes lugares guardados.</p>`;
             }
-            // Si no hay datos (favs.length === 0), el texto ya dice "Aún no tienes lugares guardados."
         } catch (err) {
             console.error('Error al cargar favoritos:', err);
-            statusText.textContent = 'Error al cargar tus lugares guardados.';
+            container.innerHTML = `<p class="panel-empty" style="color: #ff385c;">Error al conectar con la base de datos.</p>`;
         }
     }
 
