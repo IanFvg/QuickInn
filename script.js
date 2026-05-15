@@ -169,7 +169,12 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         saved: {
             title: 'Guardados',
-            content: '<p class="panel-empty">Inicia sesión para ver tus lugares guardados.</p>'
+            content: `
+                <div class="saved-list">
+                    <p class="panel-empty" id="saved-status-text">Inicia sesión para ver tus lugares guardados.</p>
+                    <div id="favorites-container"></div>
+                </div>
+            `
         },
         profile: {
             title: 'Usuario',
@@ -192,9 +197,22 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Iniciar Sesión',
             content: `
                 <div class="login-section">
-                    <div class="login-form">
-                        <input type="text" id="login-name" placeholder="Nombre" class="panel-input login-input" autocomplete="off">
-                        <input type="password" id="login-pass" placeholder="Contraseña" class="panel-input login-input">
+                    <div class="login-form" id="login-form-container">
+                        <div class="input-wrapper">
+                            <input type="text" id="login-name" placeholder="Nombre" class="panel-input login-input" autocomplete="off">
+                            <div class="input-actions">
+                                <button class="input-action-btn clear-input" data-target="login-name" style="display:none;">×</button>
+                            </div>
+                        </div>
+                        <div class="input-wrapper">
+                            <input type="password" id="login-pass" placeholder="Contraseña" class="panel-input login-input">
+                            <div class="input-actions">
+                                <button class="input-action-btn toggle-pass" data-target="login-pass">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </button>
+                                <button class="input-action-btn clear-input" data-target="login-pass" style="display:none;">×</button>
+                            </div>
+                        </div>
                         <button class="panel-btn login-btn" id="login-submit">Ingresar</button>
                     </div>
                     <div class="login-footer">
@@ -208,11 +226,37 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Registrarse',
             content: `
                 <div class="login-section">
-                    <div class="login-form">
-                        <input type="text" id="reg-name" placeholder="Nombre" class="panel-input login-input" autocomplete="off">
-                        <input type="text" id="reg-email" placeholder="Correo" class="panel-input login-input" autocomplete="off">
-                        <input type="password" id="reg-pass" placeholder="Contraseña" class="panel-input login-input">
-                        <input type="password" id="reg-pass-confirm" placeholder="Repetir Contraseña" class="panel-input login-input">
+                    <div class="login-form" id="register-form-container">
+                        <div class="input-wrapper">
+                            <input type="text" id="reg-name" placeholder="Nombre" class="panel-input login-input" autocomplete="off">
+                            <div class="input-actions">
+                                <button class="input-action-btn clear-input" data-target="reg-name" style="display:none;">×</button>
+                            </div>
+                        </div>
+                        <div class="input-wrapper">
+                            <input type="text" id="reg-email" placeholder="Correo" class="panel-input login-input" autocomplete="off">
+                            <div class="input-actions">
+                                <button class="input-action-btn clear-input" data-target="reg-email" style="display:none;">×</button>
+                            </div>
+                        </div>
+                        <div class="input-wrapper">
+                            <input type="password" id="reg-pass" placeholder="Contraseña" class="panel-input login-input">
+                            <div class="input-actions">
+                                <button class="input-action-btn toggle-pass" data-target="reg-pass">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </button>
+                                <button class="input-action-btn clear-input" data-target="reg-pass" style="display:none;">×</button>
+                            </div>
+                        </div>
+                        <div class="input-wrapper">
+                            <input type="password" id="reg-pass-confirm" placeholder="Repetir Contraseña" class="panel-input login-input">
+                            <div class="input-actions">
+                                <button class="input-action-btn toggle-pass" data-target="reg-pass-confirm">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </button>
+                                <button class="input-action-btn clear-input" data-target="reg-pass-confirm" style="display:none;">×</button>
+                            </div>
+                        </div>
                         <p id="reg-error" class="error-text" style="display:none; color: #ff385c; font-size: 0.8rem; margin-top: -10px;"></p>
                         <button class="panel-btn login-btn" id="register-btn">Registrarse</button>
                     </div>
@@ -588,8 +632,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function showPhotoPreview(data) {
-            photoPreview.innerHTML = `<img src="${data}" alt="Preview">`;
+            photoPreview.innerHTML = `
+                <div class="photo-preview-container">
+                    <img src="${data}" alt="Preview">
+                    <button class="remove-photo-btn" id="btn-remove-photo">×</button>
+                </div>
+            `;
             photoPreview.style.display = 'flex';
+            
+            document.getElementById('btn-remove-photo').onclick = () => {
+                photoFile = null;
+                photoPreview.innerHTML = '';
+                photoPreview.style.display = 'none';
+                fileInput.value = ''; // Resetear input file
+            };
         }
 
         // Manejo de Calificación
@@ -630,11 +686,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         div.onclick = () => {
                             const lat = parseFloat(item.lat);
                             const lon = parseFloat(item.lon);
-                            selectedCoords = { lat, lon, address: item.display_name };
-                            locSearchInput.value = item.display_name;
-                            locSearchResults.innerHTML = '';
-                            updateTempMarker(lat, lon);
-                            map.flyTo([lat, lon], 17);
+                            
+                            // Si es móvil, cerramos para confirmar
+                            if (window.innerWidth <= 768) {
+                                sidePanel.classList.remove('open');
+                                showMapConfirmOverlay(lat, lon, item.display_name);
+                                map.flyTo([lat, lon], 17);
+                            } else {
+                                selectedCoords = { lat, lon, address: item.display_name };
+                                locSearchInput.value = item.display_name;
+                                locSearchResults.innerHTML = '';
+                                updateTempMarker(lat, lon);
+                                map.flyTo([lat, lon], 17);
+                            }
                         };
                         locSearchResults.appendChild(div);
                     });
@@ -673,11 +737,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const onMapClick = (e) => {
             if (currentPanelKey === 'add') {
                 const { lat, lng } = e.latlng;
-                selectedCoords = { lat, lon: lng, address: 'Ubicación marcada en el mapa' };
-                updateTempMarker(lat, lng);
+                
+                // Si la pantalla es pequeña (móvil), cerramos panel para ver el mapa
+                if (window.innerWidth <= 768) {
+                    sidePanel.classList.remove('open');
+                    showMapConfirmOverlay(lat, lng);
+                } else {
+                    selectedCoords = { lat, lon: lng, address: 'Ubicación marcada en el mapa' };
+                    updateTempMarker(lat, lng);
+                }
             }
         };
         map.on('click', onMapClick);
+
+        function showMapConfirmOverlay(lat, lon, address = 'Ubicación marcada en el mapa') {
+             // Eliminar overlay anterior si existe
+             const existing = document.getElementById('map-confirm-overlay');
+             if (existing) existing.remove();
+
+             const overlay = document.createElement('div');
+             overlay.id = 'map-confirm-overlay';
+             overlay.className = 'map-confirm-overlay';
+             overlay.innerHTML = `
+                 <button class="map-btn map-btn-cancel" id="map-cancel">×</button>
+                 <button class="map-btn map-btn-confirm" id="map-confirm">✓</button>
+             `;
+             document.body.appendChild(overlay);
+
+             // Mostrar marcador temporal visual
+             updateTempMarker(lat, lon);
+
+             document.getElementById('map-confirm').onclick = () => {
+                 selectedCoords = { lat, lon, address: address };
+                 overlay.remove();
+                 sidePanel.classList.add('open');
+                 locSearchInput.value = address;
+             };
+
+             document.getElementById('map-cancel').onclick = () => {
+                 if (tempMarker) map.removeLayer(tempMarker);
+                 tempMarker = null;
+                 overlay.remove();
+                 sidePanel.classList.add('open');
+             };
+         }
 
         function updateTempMarker(lat, lon) {
             if (tempMarker) {
@@ -926,8 +1029,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Lógica de Perfil / Navegación interna
-    function initProfileEvents() {
+    async function initProfileEvents() {
         const profileView = document.getElementById('profile-view');
+        if (!profileView) return;
         
         if (!currentUser) {
             profileView.innerHTML = `
@@ -968,6 +1072,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const goToRegisterLink = document.getElementById('go-to-register-link');
         const loginSubmit = document.getElementById('login-submit');
         
+        // Inicializar acciones de entrada (ojo y X)
+        initInputActions('login-form-container');
+
         if (goToRegisterLink) {
             goToRegisterLink.addEventListener('click', () => {
                 showPanelView('register');
@@ -981,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pass = document.getElementById('login-pass').value;
 
                 if (!name || !pass) {
-                    alert('Por favor, completa todos los campos.');
+                    showInternalNotify('login-form-container', 'Por favor, completa todos los campos.', 'error');
                     return;
                 }
 
@@ -991,16 +1098,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data, error } = await signIn(name, pass);
 
                 if (error) {
-                    alert('Error: ' + error.message);
+                    showInternalNotify('login-form-container', 'Error: ' + error.message, 'error');
                     loginSubmit.disabled = false;
                     loginSubmit.textContent = 'Ingresar';
                     return;
                 }
 
                 currentUser = data;
-                showPanelView('profile');
-                initProfileEvents();
-                alert(`Bienvenido, ${currentUser.nombre_usuario}`);
+                showInternalNotify('login-form-container', `¡Bienvenido, ${currentUser.nombre_usuario}!`, 'success', () => {
+                    showPanelView('profile');
+                    initProfileEvents();
+                });
             };
         }
     }
@@ -1011,6 +1119,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const passInput = document.getElementById('reg-pass');
         const confirmPassInput = document.getElementById('reg-pass-confirm');
         const errorMsg = document.getElementById('reg-error');
+
+        // Inicializar acciones de entrada (ojo y X)
+        initInputActions('register-form-container');
 
         if (goToLoginLink) {
             goToLoginLink.addEventListener('click', () => {
@@ -1037,16 +1148,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     registerBtn.disabled = true;
                     registerBtn.textContent = 'Registrando...';
 
-                    const { error } = await signUp(email, pass, name);
+                    const { data, error } = await signUp(email, pass, name);
 
                     if (error) {
-                        alert('Error en registro: ' + error.message);
+                        showInternalNotify('register-form-container', 'Error en registro: ' + error.message, 'error');
                         registerBtn.disabled = false;
                         registerBtn.textContent = 'Registrarse';
                     } else {
-                        alert('¡Registro exitoso! Por favor, inicia sesión.');
-                        showPanelView('login');
-                        initLoginEvents();
+                        // Auto-login tras registro exitoso
+                        const loginResult = await signIn(name, pass);
+                        if (!loginResult.error) {
+                            currentUser = loginResult.data;
+                            showInternalNotify('register-form-container', '¡Cuenta creada con éxito!', 'success', () => {
+                                showPanelView('profile');
+                                initProfileEvents();
+                            });
+                        } else {
+                            showInternalNotify('register-form-container', 'Cuenta creada. Por favor inicia sesión.', 'success', () => {
+                                showPanelView('login');
+                                initLoginEvents();
+                            });
+                        }
                     }
                 }
             });
@@ -1061,8 +1183,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- NUEVAS UTILIDADES UX ---
+
+    function initInputActions(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        // Lógica para botones de limpiar (X)
+        container.querySelectorAll('.clear-input').forEach(btn => {
+            const targetId = btn.dataset.target;
+            const input = document.getElementById(targetId);
+            
+            if (input) {
+                input.addEventListener('input', () => {
+                    btn.style.display = input.value.length > 0 ? 'flex' : 'none';
+                });
+                btn.onclick = () => {
+                    input.value = '';
+                    btn.style.display = 'none';
+                    input.focus();
+                };
+            }
+        });
+
+        // Lógica para ver contraseña (ojo)
+        container.querySelectorAll('.toggle-pass').forEach(btn => {
+            const targetId = btn.dataset.target;
+            const input = document.getElementById(targetId);
+            let visible = false;
+
+            btn.onclick = () => {
+                visible = !visible;
+                input.type = visible ? 'text' : 'password';
+                btn.innerHTML = visible ? 
+                    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>` :
+                    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+            };
+        });
+    }
+
+    function showInternalNotify(containerId, message, type = 'success', callback = null) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const originalContent = container.innerHTML;
+        const icon = type === 'success' ? 
+            `<svg class="notify-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>` :
+            `<svg class="notify-icon" style="color: #ff385c" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+
+        container.innerHTML = `
+            <div class="internal-notify">
+                ${icon}
+                <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 10px;">${message}</p>
+            </div>
+        `;
+
+        setTimeout(() => {
+            if (callback) {
+                callback();
+            } else {
+                container.innerHTML = originalContent;
+                // Re-inicializar eventos si volvemos al contenido original
+                if (containerId === 'login-form-container') initLoginEvents();
+                if (containerId === 'register-form-container') initRegisterEvents();
+            }
+        }, 2000);
+    }
+
     // Función auxiliar para cambiar el contenido del panel dinámicamente
-    function showPanelView(key) {
+    async function showPanelView(key) {
         if (!panelData[key]) return;
         currentPanelKey = key; // Actualizar clave actual
         
@@ -1076,6 +1265,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
         panelTitle.textContent = panelData[key].title;
         panelContent.innerHTML = panelData[key].content;
+
+        // Actualizar lógica de "Guardados" si es el panel activo
+        if (key === 'saved') {
+            updateSavedPanel();
+        }
+    }
+
+    async function updateSavedPanel() {
+        const statusText = document.getElementById('saved-status-text');
+        const container = document.getElementById('favorites-container');
+        if (!statusText || !container) return;
+
+        if (!currentUser) {
+            statusText.textContent = 'Inicia sesión para ver tus lugares guardados.';
+            container.innerHTML = '';
+        } else {
+            const { data: favs, error } = await supabaseClient
+                .from('favoritos')
+                .select('*, locales(*)')
+                .eq('usuario_id', currentUser.id);
+
+            if (favs && favs.length > 0) {
+                statusText.style.display = 'none';
+                container.innerHTML = favs.map(f => `
+                    <div class="result-item" onclick="map.flyTo([${f.locales.latitud}, ${f.locales.longitud}], 16)">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <img src="${f.locales.foto_url}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                            <div>
+                                <p style="font-weight: 600; margin: 0;">${f.locales.nombre}</p>
+                                <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 0;">${f.locales.direccion}</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                statusText.style.display = 'block';
+                statusText.textContent = 'Aún no tienes lugares guardados.';
+                container.innerHTML = '';
+            }
+        }
     }
 
     // Lógica de Búsqueda
