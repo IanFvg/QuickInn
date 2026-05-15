@@ -1256,13 +1256,65 @@ document.addEventListener('DOMContentLoaded', () => {
         panelTitle.style.animation = null;
         panelContent.style.animation = null;
 
+        // --- LÓGICA ESPECIAL PARA EL PANEL DE GUARDADOS ---
+        if (key === 'saved') {
+            panelTitle.textContent = 'Guardados';
+            if (!currentUser) {
+                panelContent.innerHTML = `
+                    <div class="saved-list">
+                        <p class="panel-empty">Inicia sesión para ver tus lugares guardados.</p>
+                    </div>
+                `;
+            } else {
+                // Si el usuario está logueado, mostramos el panel de carga inmediatamente
+                panelContent.innerHTML = `
+                    <div class="saved-list">
+                        <p class="panel-empty" id="loading-favs">Cargando tus lugares...</p>
+                        <div id="favorites-container"></div>
+                    </div>
+                `;
+                
+                try {
+                    const { data: favs, error } = await supabaseClient
+                        .from('favoritos')
+                        .select('*, locales(*)')
+                        .eq('usuario_id', currentUser.id);
+
+                    const loadingText = document.getElementById('loading-favs');
+                    const container = document.getElementById('favorites-container');
+
+                    if (error) throw error;
+
+                    if (favs && favs.length > 0) {
+                        if (loadingText) loadingText.remove();
+                        if (container) {
+                            container.innerHTML = favs.map(f => `
+                                <div class="result-item" onclick="map.flyTo([${f.locales.latitud}, ${f.locales.longitud}], 16)">
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <img src="${f.locales.foto_url}" style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);">
+                                        <div style="flex: 1;">
+                                            <p style="font-weight: 600; margin: 0; color: white;">${f.locales.nombre}</p>
+                                            <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 2px 0 0 0;">${f.locales.direccion}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+                    } else {
+                        if (loadingText) loadingText.textContent = 'Aún no tienes lugares guardados.';
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    const loadingText = document.getElementById('loading-favs');
+                    if (loadingText) loadingText.textContent = 'Error al cargar tus lugares.';
+                }
+            }
+            return; // Salimos para no ejecutar la lógica general
+        }
+
+        // Lógica general para los demás paneles
         panelTitle.textContent = panelData[key].title;
         panelContent.innerHTML = panelData[key].content;
-
-        // Actualizar lógica de "Guardados" si es el panel activo
-        if (key === 'saved') {
-            updateSavedPanel();
-        }
     }
 
     async function updateSavedPanel() {
