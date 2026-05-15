@@ -1278,31 +1278,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!statusText || !container) return;
 
         if (!currentUser) {
+            statusText.style.display = 'block';
             statusText.textContent = 'Inicia sesión para ver tus lugares guardados.';
             container.innerHTML = '';
         } else {
-            const { data: favs, error } = await supabaseClient
-                .from('favoritos')
-                .select('*, locales(*)')
-                .eq('usuario_id', currentUser.id);
+            try {
+                const { data: favs, error } = await supabaseClient
+                    .from('favoritos')
+                    .select('*, locales(*)')
+                    .eq('usuario_id', currentUser.id);
 
-            if (favs && favs.length > 0) {
-                statusText.style.display = 'none';
-                container.innerHTML = favs.map(f => `
-                    <div class="result-item" onclick="map.flyTo([${f.locales.latitud}, ${f.locales.longitud}], 16)">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <img src="${f.locales.foto_url}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
-                            <div>
-                                <p style="font-weight: 600; margin: 0;">${f.locales.nombre}</p>
-                                <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 0;">${f.locales.direccion}</p>
+                if (error) throw error;
+
+                if (favs && favs.length > 0) {
+                    statusText.style.display = 'none';
+                    container.innerHTML = favs.map(f => `
+                        <div class="result-item" onclick="map.flyTo([${f.locales.latitud}, ${f.locales.longitud}], 16)">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <img src="${f.locales.foto_url}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                                <div>
+                                    <p style="font-weight: 600; margin: 0;">${f.locales.nombre}</p>
+                                    <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 0;">${f.locales.direccion}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
-            } else {
+                    `).join('');
+                } else {
+                    statusText.style.display = 'block';
+                    statusText.textContent = 'Aún no tienes lugares guardados.';
+                    container.innerHTML = '';
+                }
+            } catch (err) {
+                console.error('Error al cargar favoritos:', err);
                 statusText.style.display = 'block';
-                statusText.textContent = 'Aún no tienes lugares guardados.';
-                container.innerHTML = '';
+                statusText.textContent = 'Error al cargar tus lugares guardados.';
             }
         }
     }
