@@ -87,6 +87,22 @@ async function fetchLocales() {
     return { data, error };
 }
 
+// Subir imagen a Storage
+async function uploadImage(file) {
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+    const { data, error } = await supabaseClient.storage
+        .from('locales')
+        .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabaseClient.storage
+        .from('locales')
+        .getPublicUrl(fileName);
+
+    return publicUrl;
+}
+
 // Guardar local
 async function insertLocal(localData) {
     const { data, error } = await supabaseClient
@@ -489,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedRating = 0;
         let selectedPrice = 0;
         let selectedCoords = null;
-        let photoData = null;
+        let photoFile = null; // Cambiado de photoData a photoFile para almacenar el archivo real
         let stream = null;
 
         // --- Manejo de la 'X' para limpiar buscador de ubicación ---
@@ -518,10 +534,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.onchange = (e) => {
             const file = e.target.files[0];
             if (file) {
+                photoFile = file; // Guardar el archivo real
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    photoData = event.target.result;
-                    showPhotoPreview(photoData);
+                    showPhotoPreview(event.target.result);
                 };
                 reader.readAsDataURL(file);
             }
@@ -551,8 +567,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            photoData = canvas.toDataURL('image/jpeg');
-            showPhotoPreview(photoData);
+            // Convertir canvas a Blob (archivo) para Supabase Storage
+            canvas.toBlob((blob) => {
+                photoFile = new File([blob], `capture_${Date.now()}.jpg`, { type: "image/jpeg" });
+                const url = URL.createObjectURL(blob);
+                showPhotoPreview(url);
+            }, 'image/jpeg');
+            
             stopCamera();
         };
 
@@ -643,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
         locSearchInput.onkeypress = (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                clearTimeout(locDebounce);
+                clearTimeout(debounceTimer);
                 performLocSearch();
             }
         };
@@ -677,60 +698,72 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = document.getElementById('loc-name').value.trim();
         const comment = document.getElementById('loc-comment').value.trim();
 
-        if (!name || !photoData || !selectedCoords) {
+        if (!name || !photoFile || !selectedCoords) {
             alert('Por favor, completa todos los campos obligatorios (*).');
             return;
         }
 
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Guardando...';
+        saveBtn.textContent = 'Subiendo imagen...';
 
-        const localData = {
-            nombre: name,
-            direccion: selectedCoords.address,
-            latitud: selectedCoords.lat,
-            longitud: selectedCoords.lon,
-            foto_url: photoData, // Aquí idealmente subirías a Storage, pero por ahora guardamos base64
-            rango_precio: selectedPrice,
-            estado: 'pendiente',
-            confirmaciones: 0,
-            usuario_id: currentUser ? currentUser.id : null
-        };
+        try {
+            // 1. Subir imagen a Storage
+            const publicUrl = await uploadImage(photoFile);
+            
+            saveBtn.textContent = 'Guardando datos...';
 
-        const { data, error } = await insertLocal(localData);
+            // 2. Insertar datos en la tabla locales
+            const localData = {
+                nombre: name,
+                direccion: selectedCoords.address,
+                latitud: selectedCoords.lat,
+                longitud: selectedCoords.lon,
+                foto_url: publicUrl, // Ahora guardamos la URL real de Storage
+                rango_precio: selectedPrice,
+                estado: 'pendiente',
+                confirmaciones: 0,
+                usuario_id: currentUser ? currentUser.id : null
+            };
 
-        if (error) {
+            const { data, error } = await insertLocal(localData);
+
+            if (error) throw error;
+
+            const savedLoc = data[0];
+
+            // 3. Guardar reseña inicial si hay comentario o rating
+            if (comment || selectedRating > 0) {
+                await supabaseClient.from('reseñas').insert([{
+                    local_id: savedLoc.id,
+                    usuario_id: currentUser.id,
+                    calificacion: selectedRating,
+                    comentario: comment
+                }]);
+            }
+
+            addLocationToMap(savedLoc);
+            
+            // Limpiar y cerrar
+            photoFile = null;
+            photoPreview.innerHTML = '';
+            photoPreview.style.display = 'none';
+            document.getElementById('loc-name').value = '';
+            document.getElementById('loc-comment').value = '';
+
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+                tempMarker = null;
+            }
+            map.off('click', onMapClick);
+            sidePanel.classList.remove('open');
+            sidebarItems.forEach(i => i.classList.remove('active'));
+            alert('¡Ubicación agregada con éxito! Está pendiente de validación.');
+        } catch (error) {
             alert('Error al guardar: ' + error.message);
+        } finally {
             saveBtn.disabled = false;
             saveBtn.textContent = 'Agregar ubicación';
-            return;
         }
-
-        const savedLoc = data[0];
-
-        // Guardar reseña inicial si hay comentario o rating
-        if (comment || selectedRating > 0) {
-            await supabaseClient.from('reseñas').insert([{
-                local_id: savedLoc.id,
-                usuario_id: currentUser.id,
-                calificacion: selectedRating,
-                comentario: comment
-            }]);
-        }
-
-        addLocationToMap(savedLoc);
-        
-        // Limpiar y cerrar
-        if (tempMarker) {
-            map.removeLayer(tempMarker);
-            tempMarker = null;
-        }
-        map.off('click', onMapClick);
-        sidePanel.classList.remove('open');
-        sidebarItems.forEach(i => i.classList.remove('active'));
-        alert('¡Ubicación agregada con éxito! Está pendiente de validación.');
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Agregar ubicación';
     };
     }
 
