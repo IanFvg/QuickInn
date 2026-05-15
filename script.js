@@ -1271,47 +1271,49 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('favorites-container');
         if (!statusText || !container) return;
 
-        // Limpiar el contenedor antes de verificar
-        container.innerHTML = '';
+        console.log("Actualizando panel de guardados. Usuario actual:", currentUser);
 
         if (!currentUser) {
             statusText.style.display = 'block';
             statusText.textContent = 'Inicia sesión para ver tus lugares guardados.';
-        } else {
-            try {
-                // Mostrar cargando brevemente
-                statusText.style.display = 'block';
-                statusText.textContent = 'Cargando tus lugares...';
+            container.innerHTML = '';
+            return;
+        }
 
-                const { data: favs, error } = await supabaseClient
-                    .from('favoritos')
-                    .select('*, locales(*)')
-                    .eq('usuario_id', currentUser.id);
+        try {
+            // Si hay usuario, ocultamos el mensaje de "Inicia sesión" de inmediato
+            statusText.textContent = 'Cargando tus lugares...';
+            statusText.style.display = 'block';
 
-                if (error) throw error;
+            const { data: favs, error } = await supabaseClient
+                .from('favoritos')
+                .select('*, locales(*)')
+                .eq('usuario_id', currentUser.id);
 
-                if (favs && favs.length > 0) {
-                    statusText.style.display = 'none';
-                    container.innerHTML = favs.map(f => `
-                        <div class="result-item" onclick="map.flyTo([${f.locales.latitud}, ${f.locales.longitud}], 16)">
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <img src="${f.locales.foto_url}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
-                                <div>
-                                    <p style="font-weight: 600; margin: 0;">${f.locales.nombre}</p>
-                                    <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 0;">${f.locales.direccion}</p>
-                                </div>
+            if (error) throw error;
+
+            if (favs && favs.length > 0) {
+                statusText.style.display = 'none'; // Desaparece el texto si hay lugares
+                container.innerHTML = favs.map(f => `
+                    <div class="result-item" onclick="map.flyTo([${f.locales.latitud}, ${f.locales.longitud}], 16)">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <img src="${f.locales.foto_url}" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                            <div>
+                                <p style="font-weight: 600; margin: 0;">${f.locales.nombre}</p>
+                                <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 0;">${f.locales.direccion}</p>
                             </div>
                         </div>
-                    `).join('');
-                } else {
-                    statusText.style.display = 'block';
-                    statusText.textContent = 'Aún no tienes lugares guardados.';
-                }
-            } catch (err) {
-                console.error('Error al cargar favoritos:', err);
+                    </div>
+                `).join('');
+            } else {
                 statusText.style.display = 'block';
-                statusText.textContent = 'Error al cargar tus lugares guardados.';
+                statusText.textContent = 'Aún no tienes lugares guardados.';
+                container.innerHTML = '';
             }
+        } catch (err) {
+            console.error('Error al cargar favoritos:', err);
+            statusText.style.display = 'block';
+            statusText.textContent = 'Error al cargar tus lugares guardados.';
         }
     }
 
