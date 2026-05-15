@@ -1105,10 +1105,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 currentUser = data;
-                showInternalNotify('login-form-container', `¡Bienvenido, ${currentUser.nombre_usuario}!`, 'success', () => {
-                    showPanelView('profile');
-                    initProfileEvents();
-                });
+                showPanelView('profile');
+                initProfileEvents();
             };
         }
     }
@@ -1151,23 +1149,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { data, error } = await signUp(email, pass, name);
 
                     if (error) {
-                        showInternalNotify('register-form-container', 'Error en registro: ' + error.message, 'error');
+                        alert('Error en registro: ' + error.message);
                         registerBtn.disabled = false;
                         registerBtn.textContent = 'Registrarse';
                     } else {
-                        // Auto-login tras registro exitoso
+                        // Auto-login tras registro exitoso: SIN pantalla blanca
                         const loginResult = await signIn(name, pass);
                         if (!loginResult.error) {
                             currentUser = loginResult.data;
-                            showInternalNotify('register-form-container', '¡Cuenta creada con éxito!', 'success', () => {
-                                showPanelView('profile');
-                                initProfileEvents();
-                            });
+                            showPanelView('profile');
+                            initProfileEvents();
                         } else {
-                            showInternalNotify('register-form-container', 'Cuenta creada. Por favor inicia sesión.', 'success', () => {
-                                showPanelView('login');
-                                initLoginEvents();
-                            });
+                            showPanelView('login');
+                            initLoginEvents();
                         }
                     }
                 }
@@ -1277,12 +1271,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('favorites-container');
         if (!statusText || !container) return;
 
+        // Limpiar el contenedor antes de verificar
+        container.innerHTML = '';
+
         if (!currentUser) {
             statusText.style.display = 'block';
             statusText.textContent = 'Inicia sesión para ver tus lugares guardados.';
-            container.innerHTML = '';
         } else {
             try {
+                // Mostrar cargando brevemente
+                statusText.style.display = 'block';
+                statusText.textContent = 'Cargando tus lugares...';
+
                 const { data: favs, error } = await supabaseClient
                     .from('favoritos')
                     .select('*, locales(*)')
@@ -1306,7 +1306,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     statusText.style.display = 'block';
                     statusText.textContent = 'Aún no tienes lugares guardados.';
-                    container.innerHTML = '';
                 }
             } catch (err) {
                 console.error('Error al cargar favoritos:', err);
